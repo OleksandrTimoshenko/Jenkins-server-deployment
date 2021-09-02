@@ -1,0 +1,30 @@
+version: "3.7"
+services:
+  jenkins:
+    image: jenkins/jenkins
+    expose:
+      - 8080
+      - 50000
+    volumes:
+      - jenkins_data:/var/jenkins_home
+
+  nginx:
+    image: nginx:1.19.0-alpine
+    volumes:
+      - nginx-configs:/etc/nginx/conf.d/
+    ports:
+      - 80:80
+    depends_on:
+      - jenkins
+
+volumes:
+  jenkins_data:
+    driver_opts: 
+      type: none
+      device: /home/alex/Teamvoy/my_projects/jenkins/data/
+      o: bind
+  nginx-configs:
+    driver_opts:
+      type: none
+      device: /home/alex/Teamvoy/my_projects/jenkins/nginx/
+      o: bind
