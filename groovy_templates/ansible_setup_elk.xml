@@ -1,0 +1,94 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@1174.vdcb_d054cf74a_">
+  <actions>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobAction plugin="pipeline-model-definition@2.2075.vce74e77b_ce40"/>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction plugin="pipeline-model-definition@2.2075.vce74e77b_ce40">
+      <jobProperties/>
+      <triggers/>
+      <parameters/>
+      <options/>
+    </org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction>
+  </actions>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties/>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2683.vd0a_8f6a_1c263">
+    <script>pipeline {
+    agent any
+
+    environment {
+        AWS_ACCESS_KEY_ID     = credentials(&apos;AWS_ACCESS_KEY&apos;)
+        AWS_SECRET_ACCESS_KEY = credentials(&apos;AWS_SECRET_KEY&apos;)
+        SERVER_IP             = credentials(&apos;ELK_IP&apos;) // &apos;3.227.231.62&apos; //
+        SERVER_USER           = &quot;root&quot;
+        SSH_USER              = &quot;ubuntu&quot;
+        KEY_RSA               = &quot;id_rsa.pem&quot;
+        DOMAIN_NAME           = &quot;elk.feature-testing.link&quot;
+        EMAIL                 = &quot;oleksandr.tymoshenko@teamvoy.com&quot;
+    }
+    stages {
+        stage(&apos;Clone sources&apos;) {
+            steps {
+                git url: &apos;https://github.com/OleksandrTimoshenko/ELK_stack_deployment&apos;
+            }
+        }
+        stage(&apos;Show files&apos;){
+            steps {
+                sh &quot;ls -la&quot;
+            }
+        }
+        stage(&apos;Get Ansible version&apos;){
+            steps {
+                sh &apos;ansible --version&apos;
+            }
+        }
+        stage(&apos;Create ssh key&apos;){
+            steps{
+                withCredentials([file(credentialsId: &apos;ssh&apos;, variable: &apos;FILE&apos;)]) {
+                    sh &apos;cat $FILE &gt;&gt; $KEY_RSA&apos;
+                    sh &apos;chmod 600 $KEY_RSA&apos;
+                    }
+            }
+        }
+        stage(&apos;Create htpasswd.users file&apos;) {
+            steps {
+                sh &apos;touch ./nginx/htpasswd.users&apos;
+                sh &apos;echo &quot;KibanaAdmin:$apr1$dd5FjqTq$.iuRii0aO3WXQH4wEMrtQ1&quot; &gt;&gt; ./nginx/htpasswd.users&apos; // I can use env. variables for it
+            }
+        }
+        //stage(&apos;GET IP&apos;){
+        //    steps {
+        //        sh &apos;SERVER_IP=$SERVER_IP&apos;
+        //        sh &apos;echo &quot;AWS_ACCESS_KEY=$AWS_ACCESS_KEY_ID&quot; &gt;&gt; .env&apos;
+        //        sh &apos;echo &quot;AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY&quot; &gt;&gt; .env&apos;
+        //        sh &apos;echo &quot;SERVER_IP=$SERVER_IP&quot; &gt;&gt; .env&apos;
+        //        sh &apos;echo &quot;SERVER_USER=$SERVER_USER&quot; &gt;&gt; .env&apos;
+        //        sh &apos;echo &quot;SSH_USER=$SSH_USER&quot; &gt;&gt; .env&apos;
+        //        sh &apos;echo &quot;KEY_RSA=id_rsa.pem&quot; &gt;&gt; .env&apos;
+        //        sh &apos;echo &quot;EMAIL=oleksandr.tymoshenko@teamvoy.com&quot; &gt;&gt; .env&apos;
+        //        sh &apos;echo &quot;DOMAIN_NAME=elk.feature-testing.link&quot; &gt;&gt; .env&apos;
+        //        sh &apos;echo &quot;\n&quot; &gt;&gt; .env&apos;
+        //        sh &apos;cat .env&apos;
+        //    }
+        //}
+        stage(&apos;Start ansible&apos;){
+            steps {
+                sh &apos;ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -v -i $SERVER_IP, --user $SSH_USER --private-key $KEY_RSA install_elk.yaml --extra-vars &quot;server_user=$SERVER_USER aws_access_key=$AWS_ACCESS_KEY_ID aws_secret_access_key=$AWS_SECRET_ACCESS_KEY domain_name=$DOMAIN_NAME email=$EMAIL env_setup=stage&quot;&apos;
+                }
+        }
+        
+        stage(&apos;Making clean-up&apos;){
+            steps {
+                //sh &apos;rm -rf .env&apos;
+                sh &apos;rm -rf id_rsa.pem&apos;
+            }
+        }
+    }
+}
+
+</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>

@@ -1,0 +1,87 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@1174.vdcb_d054cf74a_">
+  <actions>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobAction plugin="pipeline-model-definition@2.2075.vce74e77b_ce40"/>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction plugin="pipeline-model-definition@2.2075.vce74e77b_ce40">
+      <jobProperties/>
+      <triggers/>
+      <parameters/>
+      <options/>
+    </org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction>
+  </actions>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties/>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2683.vd0a_8f6a_1c263">
+    <script>pipeline {
+    agent any
+
+    environment {
+        AWS_ACCESS_KEY_ID     = credentials(&apos;AWS_ACCESS_KEY&apos;)
+        AWS_SECRET_ACCESS_KEY = credentials(&apos;AWS_SECRET_KEY&apos;)
+    }
+    stages {
+        stage(&apos;Clone sources&apos;) {
+            steps {
+                git url: &apos;https://github.com/OleksandrTimoshenko/AWS_auto_scaling_group&apos;
+            }
+        }
+        stage(&apos;Show files&apos;){
+            steps {
+                sh &quot;ls -la&quot;
+            }
+        }
+        stage(&apos;Get Terraform version&apos;){
+            steps {
+                sh &apos;terraform --version&apos;
+            }
+        }
+//        stage(&apos;Test print env variables&apos;){
+//            steps {
+//                sh &apos;echo $AWS_ACCESS_KEY_ID&apos;
+//            }
+//        }
+        stage(&apos;After build clean-up-1&apos;){
+            steps {
+                sh &apos;rm -rf terraform.tfvars&apos;
+                sh &apos;ls -la&apos;
+            }
+        }
+        stage(&apos;Create tfvar file&apos;){
+            steps {
+                sh &apos;touch terraform.tfvars&apos;
+                sh &apos;echo &quot;aws_access_key=$AWS_ACCESS_KEY_ID&quot; &gt;&gt; terraform.tfvars&apos;
+                sh &apos;echo &quot;aws_secret_key=$AWS_SECRET_ACCESS_KEY&quot; &gt;&gt; terraform.tfvars&apos;
+                sh &apos;echo &quot;\n&quot; &gt;&gt; terraform.tfvars&apos;
+                sh &apos;cat terraform.tfvars&apos;
+            }
+        }
+//        stage(&apos;Terraform srart&apos;){
+//            steps{
+//                sh &apos;terraform init&apos;
+//                sh &apos;terraform plan -no-color  &gt;&gt; terraform.plan&apos;
+//                sh &apos;cat terraform.plan&apos;
+//                sh &apos;terraform apply -auto-approve -no-color &gt;&gt; terraform_apply.logs&apos;
+//                sh &apos;cat terraform_apply.logs&apos;
+//            }
+//        }
+        stage(&apos;Terraform destroy&apos;){
+            steps{
+                sh &apos;terraform destroy -auto-approve -no-color&apos;
+            }
+        }
+        stage(&apos;After build clean-up&apos;){
+            steps {
+                sh &apos;rm -rf terraform.tfvars&apos;
+                sh &apos;ls -la&apos;
+            }
+        }
+    }
+}
+
+</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>
