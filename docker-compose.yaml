@@ -14,24 +14,9 @@ services:
     networks:
       - jenkins-net
 
-  jenkins-worker-1:
+  jenkins-worker:
     image: eeacms/jenkins-slave
     container_name: jenkins-worker-1
-    environment:
-      JAVA_OPTS: "-Xmx2048m"
-      JENKINS_MASTER: "http://jenkins-master:8080"
-      JENKINS_NAME: "worker"
-      JENKINS_RETRY: "10"
-    env_file:
-      - .env
-    networks:
-      - jenkins-net
-    depends_on:
-      - jenkins-master
-
-  jenkins-worker-2:
-    image:  eeacms/jenkins-slave
-    container_name: jenkins-worker-2
     environment:
       JAVA_OPTS: "-Xmx2048m"
       JENKINS_MASTER: "http://jenkins-master:8080"
