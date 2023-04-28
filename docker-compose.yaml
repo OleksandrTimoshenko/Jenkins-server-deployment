@@ -20,7 +20,27 @@ services:
     environment:
       JAVA_OPTS: "-Xmx2048m"
       JENKINS_MASTER: "http://jenkins-master:8080"
-      JENKINS_NAME: "worker"
+      JENKINS_NAME: "default-worker"
+      JENKINS_RETRY: "10"
+    env_file:
+      - .env
+    networks:
+      - jenkins-net
+    depends_on:
+      - jenkins-master
+
+  jenkins-worker-terraform:
+    image: jenkins-slave-terraform
+    build:
+      context: ./docker
+      dockerfile: ./Dockerfile_terraform_worker
+      args:
+        TERRAFORM_VERSION: ${TERRAFORM_VERSION}
+    container_name: jenkins-worker-1
+    environment:
+      JAVA_OPTS: "-Xmx2048m"
+      JENKINS_MASTER: "http://jenkins-master:8080"
+      JENKINS_NAME: "terraform"
       JENKINS_RETRY: "10"
     env_file:
       - .env

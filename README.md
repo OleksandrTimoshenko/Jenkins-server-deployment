@@ -33,11 +33,11 @@ docker swarm leave -f
 python3 ./data.py -i <AWS_ID> -k <AWS_KEY> -r <AWS_REGION> -b <AWS _S3_BUCKET> -f data -m S3_TO_LOCAL
 ```
 
-### Download volume to S3
+### Download volume from S3
 ```
 python3 ./data.py -i <AWS_ID> -k <AWS_KEY> -r <AWS_REGION> -b <AWS _S3_BUCKET> -f data -m LOCAL_TO_S3
 ```
 
 ### TODO:
 - add make(invoke, bash) scripts for first setup
-- add Dockerfiles for setup different types of workers
+- add Dockerfiles for setup different types of workers (Terraform - done)
