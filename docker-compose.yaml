@@ -2,7 +2,10 @@ version: '3'
 
 services:
   jenkins-master:
-    image: eeacms/jenkins-master
+    image: jenkins-master
+    build:
+      context: ./docker
+      dockerfile: ./Dockerfile_master
     container_name: jenkins-master
     expose:
       - 8080
@@ -11,6 +14,7 @@ services:
     - JAVA_OPTS=-Xmx2048m
     volumes:
       - ./data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - jenkins-net
 
