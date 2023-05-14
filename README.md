@@ -4,7 +4,7 @@
 ```
 mkdir data
 cp .env.example .env
-docker swarm init
+docker swarm init --advertise-addr X.X.X.X
 docker stack deploy --compose-file docker-compose.yaml jenkins
 docker service ls
 ```

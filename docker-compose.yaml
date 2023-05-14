@@ -16,7 +16,7 @@ services:
 
   jenkins-worker:
     image: eeacms/jenkins-slave
-    container_name: jenkins-worker-1
+    container_name: jenkins-worker
     environment:
       JAVA_OPTS: "-Xmx2048m"
       JENKINS_MASTER: "http://jenkins-master:8080"
@@ -36,7 +36,7 @@ services:
       dockerfile: ./Dockerfile_terraform_worker
       args:
         TERRAFORM_VERSION: ${TERRAFORM_VERSION}
-    container_name: jenkins-worker-1
+    container_name: jenkins-worker-terraform
     environment:
       JAVA_OPTS: "-Xmx2048m"
       JENKINS_MASTER: "http://jenkins-master:8080"
