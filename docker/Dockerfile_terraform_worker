@@ -1,0 +1,7 @@
+FROM eeacms/jenkins-slave
+
+ARG TERRAFORM_VERSION=1.4.6
+
+RUN wget https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_386.zip && \
+    unzip terraform_${TERRAFORM_VERSION}_linux_386.zip && chmod +x terraform && \
+    mv terraform /usr/bin/ && rm -rf terraform* && terraform --version
