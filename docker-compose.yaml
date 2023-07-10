@@ -2,14 +2,7 @@ version: '3'
 
 services:
   jenkins-master:
-    image: jenkins-master
-    build:
-      context: ./docker
-      dockerfile: ./Dockerfile_master
-    container_name: jenkins-master
-    expose:
-      - 8080
-      - 50000
+    image: ghcr.io/${REGISTRY}/jenkins-master
     environment:
     - JAVA_OPTS=-Xmx2048m
     volumes:
@@ -20,7 +13,6 @@ services:
 
   jenkins-worker:
     image: eeacms/jenkins-slave
-    container_name: jenkins-worker
     environment:
       JAVA_OPTS: "-Xmx2048m"
       JENKINS_MASTER: "http://jenkins-master:8080"
@@ -34,13 +26,7 @@ services:
       - jenkins-master
 
   jenkins-worker-terraform:
-    image: jenkins-slave-terraform
-    build:
-      context: ./docker
-      dockerfile: ./Dockerfile_terraform_worker
-      args:
-        TERRAFORM_VERSION: ${TERRAFORM_VERSION}
-    container_name: jenkins-worker-terraform
+    image: ghcr.io/${REGISTRY}/jenkins-slave-terraform
     environment:
       JAVA_OPTS: "-Xmx2048m"
       JENKINS_MASTER: "http://jenkins-master:8080"
@@ -55,7 +41,6 @@ services:
 
   nginx:
     image: nginx:latest
-    container_name: nginx
     ports:
       - "80:80"
     volumes:
