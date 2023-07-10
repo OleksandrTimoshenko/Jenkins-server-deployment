@@ -1,0 +1,14 @@
+docker exec -it <master_node> bash
+apt install wget
+mkdir ./jobs
+chmod 777 ./jobs
+su jenkins
+cd ./jobs
+wget http://127.0.0.1:8080/jnlpJars/jenkins-cli.jar
+java -jar jenkins-cli.jar -s http://localhost:8080/ -auth <myLoggin>:<myPassword> list-jobs
+# Export
+java -jar jenkins-cli.jar -s http://server get-job <myjob> > myjob.xml
+# Import
+java -jar jenkins-cli.jar -s http://server create-job <newmyjob> < myjob.xml
+exit
+docker cp <master_node>s:/jobs/myjob.xml ./groovy_templates
