@@ -2,12 +2,17 @@
 
 ### Start master Jenkins
 ```
-mkdir data
 cp .env.example .env
-docker swarm init --advertise-addr X.X.X.X
-docker stack deploy --compose-file docker-compose.yaml jenkins
-docker service ls
+invoke start
 ```
+### Usefull invoke commands
+invoke registry-login
+invoke build-images
+invoke push-images
+invoke get-password
+invoke destroy
+invoke create-backup
+invoke --complete (see all invoke shortcuts)
 
 ### Get credentials for first setup
 ```
@@ -39,5 +44,7 @@ python3 ./data.py -i <AWS_ID> -k <AWS_KEY> -r <AWS_REGION> -b <AWS _S3_BUCKET> -
 ```
 
 ### TODO:
-- add make(invoke, bash) scripts for first setup
+- get functions from data.py for downloading/uploading files in invoke file
+- add discriptions to make shortcuts
 - add Dockerfiles for setup different types of workers (Terraform - done)
+
