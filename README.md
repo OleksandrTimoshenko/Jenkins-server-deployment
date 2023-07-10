@@ -13,7 +13,7 @@ invoke push-images
 invoke get-password
 invoke destroy
 invoke create-backup
-invoke --complete (see all invoke shortcuts)
+invoke --list (see all invoke shortcuts)
 ```
 
 ### Get credentials for first setup
@@ -47,6 +47,5 @@ python3 ./data.py -i <AWS_ID> -k <AWS_KEY> -r <AWS_REGION> -b <AWS _S3_BUCKET> -
 
 ### TODO:
 - get functions from data.py for downloading/uploading files in invoke file
-- add discriptions to make shortcuts
 - add Dockerfiles for setup different types of workers (Terraform - done)
 
