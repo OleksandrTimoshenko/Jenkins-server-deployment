@@ -6,6 +6,7 @@ cp .env.example .env
 invoke start
 ```
 ### Usefull invoke commands
+```
 invoke registry-login
 invoke build-images
 invoke push-images
@@ -13,6 +14,7 @@ invoke get-password
 invoke destroy
 invoke create-backup
 invoke --complete (see all invoke shortcuts)
+```
 
 ### Get credentials for first setup
 ```
