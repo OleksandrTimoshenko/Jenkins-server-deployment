@@ -33,7 +33,6 @@ pipeline {
         BB_WORKSPACE = "ci-integration1"
         BB_REPO = "test-for-ci"
         GIT_REPO = "git@bitbucket.org:ci-integration1/test-for-ci.git"
-        //BB_SSH_KEY = credentials('BB_SSH_KEY')
         BEARER_AUTH = credentials('BITBUCKET_BEARER_AUTH')
         FORCE_MERGE_APPROVED = false
         TESTS_OK = false
@@ -43,7 +42,7 @@ pipeline {
         stage('Get info about PR') {
             steps {
                 script {
-                    RES = sh(returnStdout: true, script: """curl \
+                    PR_INFO = sh(returnStdout: true, script: """curl \
                         -X GET -L \
                         -H \"Accept: application/json\" \
                         -H \"Authorization: Bearer ${env.BEARER_AUTH}\" \
@@ -54,7 +53,7 @@ pipeline {
         stage('Sheck that PR is open') {
             steps {
                 script {
-                    if (RES.contains('"state": "OPEN"')) {
+                    if (PR_INFO.contains('"state": "OPEN"')) {
                         printMessage("", "PR is open and can be merged...")
                     }
                     else {
@@ -95,12 +94,13 @@ pipeline {
                             mkdir -p ~/.ssh
                             cp $SSH_PRIVATE_KEY ~/.ssh/id_rsa
                             chmod 600 ~/.ssh/id_rsa
-                            printf 'Host *\n\tStrictHostKeyChecking no\n\n' > ~/.ssh/config
+                            echo 'Host *\n\tStrictHostKeyChecking no\n\n' >> ~/.ssh/config
                         """
 
                         // Checkout the Git repository
-                        // TODO: set source branch from PR (I can use RES variable... )
-                        sh "git clone ${GIT_REPO}"
+                        def prInfo = readJSON text: PR_INFO
+                        def sourceBranch = prInfo.source.branch.name
+                        sh "git clone -b ${sourceBranch} ${GIT_REPO}"
                     }
                 }
             }
@@ -109,17 +109,19 @@ pipeline {
         stage('Run tests') {
             steps {
                 script {
-                    // simulate tests
-                    try {
-                        sh "cat ~/workspace/Merge_BB_PR/test-for-ci/bitbucket-pipelines.yml"
+                    def TESTS_RES = sh(script: 'python3 ~/workspace/Merge_BB_PR/test-for-ci/tests.py', returnStdout: true).trim()
+                    echo "${TESTS_RES}"
+                    if (TESTS_RES != "Tests passed!") {
+                        printMessage('ERROR', "Tests failed")
+                        error("Tests failed")
+                    }
+                    else {
                         TESTS_OK = true
-                    } catch (Exception e) {
-                        echo 'Exception occurred: ' + e.toString()
-                        sh 'Tests Failed!'
                     }
                 }
             }
         }
+        // TODO: add approve check
         stage('Run merge') {
             when {
                 anyOf {
