@@ -72,7 +72,7 @@ pipeline {
                         if (BUILD_TRIGGER_BY in WHO_CAN_MERGE_WITHOUT_TESTS) {
                             FORCE_MERGE_APPROVED = true
                             printMessage ("", "Force merge activated, trigerred by ${BUILD_TRIGGER_BY} user.")
-                            printMessage('WARNING', "WARNING: all tests will be skipped!!!")
+                            printMessage('WARNING', "WARNING: Force merge")
                         }
                         else {
                             printMessage('ERROR', "ERROR: User ${BUILD_TRIGGER_BY} don`t have force merge permissions!!!")
@@ -121,7 +121,37 @@ pipeline {
                 }
             }
         }
-        // TODO: add approve check
+        stage("Test approves") {
+            when {
+                expression {
+                    return FORCE_MERGE_APPROVED != true
+                }
+            }
+            steps {
+                script {
+                    def NOT_APPROVED_USERS = []
+                    def prInfo = readJSON text: PR_INFO
+                    def APPROVERS = prInfo.reviewers.display_name
+                    def PARTISIPANTS = prInfo.participants
+                    if (APPROVERS == []) {
+                        printMessage('ERROR', "ERROR: It seems like this PR don`t have any approver...")
+                        error("It seems like this PR don`t have any approver...")
+                    }
+                    else {
+                        printMessage('', "Founded reviever(s) for this PR: ${APPROVERS}")
+                    }
+                    PARTISIPANTS.each { participant ->
+                        if (participant.role == 'REVIEWER' && participant.approved == false) {
+                           NOT_APPROVED_USERS <<  participant.user.display_name
+                        }
+                    }
+                    if (NOT_APPROVED_USERS.size() != 0) {
+                        printMessage('ERROR', "ERROR: This approvers don`t approved PR yet: ${NOT_APPROVED_USERS}")
+                        error("Get approve from all approvers")
+                    }
+                }
+            }
+        }
         stage('Run merge') {
             when {
                 anyOf {
