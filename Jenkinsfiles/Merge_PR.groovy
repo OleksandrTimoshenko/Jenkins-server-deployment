@@ -165,8 +165,11 @@ pipeline {
             }
             steps {
                 script {
-                    // TODO: add scrit for merge
-                    printMessage("", "Run merge")
+                    sh(script: """curl \
+                        -X POST \
+                        -H \"Accept: application/json\" \
+                        -H \"Authorization: Bearer ${env.BEARER_AUTH}\" \
+                        https://api.bitbucket.org/2.0/repositories/${env.BB_WORKSPACE}/${env.BB_REPO}/pullrequests/${params.PR_ID}/merge""")
                 }
             }
         }
