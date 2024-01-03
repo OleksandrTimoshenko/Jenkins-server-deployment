@@ -26,7 +26,7 @@ pipeline {
     }
     agent {
         node {
-            label 'swarm'
+            label 'python'
         }
     }
     environment {
