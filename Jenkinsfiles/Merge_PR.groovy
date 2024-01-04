@@ -39,7 +39,7 @@ pipeline {
     }
 
     stages {
-        stage('Get info about PR') {
+        stage('Get information about the pull request') {
             steps {
                 script {
                     PR_INFO = sh(returnStdout: true, script: """curl \
@@ -50,20 +50,20 @@ pipeline {
                 }
             }
         }
-        stage('Sheck that PR is open') {
+        stage('Verify that the pull request is open') {
             steps {
                 script {
                     if (PR_INFO.contains('"state": "OPEN"')) {
-                        printMessage("", "PR is open and can be merged...")
+                        printMessage("", "The pull request is open and can be merged...")
                     }
                     else {
-                            printMessage('ERROR', "ERROR: PR with ID ${params.PR_ID} closed, doesn`t exist or you don`t have access to it!")
-                            error("Issue with current PR")
+                            printMessage('ERROR', "ERROR: The pull request with ID ${params.PR_ID} is closed, does not exist, or you don't have access to it!")
+                            error("There is an issue with the current pull request...")
                         }
                 }
             }
         }
-        stage('Check FORCE merge') {
+        stage('Verify the option for a FORCE merge') {
             steps {
                 script {
                     if (params.FORCE_MERGE == true) {
@@ -71,18 +71,18 @@ pipeline {
                         def WHO_CAN_MERGE_WITHOUT_TESTS = getAdminUsers()
                         if (BUILD_TRIGGER_BY in WHO_CAN_MERGE_WITHOUT_TESTS) {
                             FORCE_MERGE_APPROVED = true
-                            printMessage ("", "Force merge activated, trigerred by ${BUILD_TRIGGER_BY} user.")
-                            printMessage('WARNING', "WARNING: Force merge")
+                            printMessage ("", "Force merge activated, triggered by user ${BUILD_TRIGGER_BY}.")
+                            printMessage('WARNING', "WARNING: Force merge!")
                         }
                         else {
-                            printMessage('ERROR', "ERROR: User ${BUILD_TRIGGER_BY} don`t have force merge permissions!!!")
-                            error("Starting force merge for this user in not alloved!")
+                            printMessage('ERROR', "ERROR: User ${BUILD_TRIGGER_BY} does not have force merge permissions!!!")
+                            error("Starting a force merge for this user is not allowed.")
                         }
                     }
                 }
             }
         }
-        stage('Checkout Repository') {
+        stage('Check out the repository') {
             steps {
                 script {
                     // Use the 'withCredentials' step to bind SSH credentials
@@ -112,8 +112,8 @@ pipeline {
                     def TESTS_RES = sh(script: 'python3 ~/workspace/Merge_BB_PR/test-for-ci/tests.py', returnStdout: true).trim()
                     echo "${TESTS_RES}"
                     if (TESTS_RES != "Tests passed!") {
-                        printMessage('ERROR', "Tests failed")
-                        error("Tests failed")
+                        printMessage('ERROR', "Tests failed!")
+                        error("Tests failed!")
                     }
                     else {
                         TESTS_OK = true
@@ -121,7 +121,7 @@ pipeline {
                 }
             }
         }
-        stage("Test approves") {
+        stage("Tests have been approved") {
             when {
                 expression {
                     return FORCE_MERGE_APPROVED != true
@@ -134,11 +134,11 @@ pipeline {
                     def APPROVERS = prInfo.reviewers.display_name
                     def PARTISIPANTS = prInfo.participants
                     if (APPROVERS == []) {
-                        printMessage('ERROR', "ERROR: It seems like this PR don`t have any approver...")
-                        error("It seems like this PR don`t have any approver...")
+                        printMessage('ERROR', "ERROR: It seems like this pull request doesn't have any approver...")
+                        error("It seems like this pull request doesn't have any approver...")
                     }
                     else {
-                        printMessage('', "Founded reviever(s) for this PR: ${APPROVERS}")
+                        printMessage('', "Found reviewer(s) for this pull request: ${APPROVERS}")
                     }
                     PARTISIPANTS.each { participant ->
                         if (participant.role == 'REVIEWER' && participant.approved == false) {
@@ -146,8 +146,8 @@ pipeline {
                         }
                     }
                     if (NOT_APPROVED_USERS.size() != 0) {
-                        printMessage('ERROR', "ERROR: This approvers don`t approved PR yet: ${NOT_APPROVED_USERS}")
-                        error("Get approve from all approvers")
+                        printMessage('ERROR', "ERROR: The approver(s) haven't approved the pull request yet: ${NOT_APPROVED_USERS}")
+                        error("Doesn't have approval from all approvers.")
                     }
                 }
             }
@@ -163,6 +163,8 @@ pipeline {
                     }
                 }
             }
+            // https://developer.atlassian.com/cloud/bitbucket/rest/api-group-pullrequests/#api-repositories-workspace-repo-slug-pullrequests-pull-request-id-merge-post
+            // TODO: add data (merge_strategy, close_source_branch, etc)
             steps {
                 script {
                     sh(script: """curl \
