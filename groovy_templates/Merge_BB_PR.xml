@@ -1,0 +1,218 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@1308.v58d48a_763b_31">
+  <actions>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobAction plugin="pipeline-model-definition@2.2141.v5402e818a_779"/>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction plugin="pipeline-model-definition@2.2141.v5402e818a_779">
+      <jobProperties/>
+      <triggers/>
+      <parameters/>
+      <options/>
+    </org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction>
+  </actions>
+  <description>Merge BB PR if all tests passed:&#xd;
+1. PR have approvers and all approvers provide approve &#xd;
+2. PR have tests and all tests works fine&#xd;
+3. Some users can skip tests (user list set in job)</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.10"/>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>PR_ID</name>
+          <description>ID of existing PR which should be merger</description>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>FORCE_MERGE</name>
+          <description>Merge without any tests.</description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@3691.v28b_14c465a_b_b_">
+    <script>def getAdminUsers(){
+  return [&apos;admin&apos;]
+}
+
+def printMessage(color, message) {
+    def ANSI_RESET = &apos;\u001B[0m&apos;
+    def ANSI_YELLOW = &apos;\u001B[33m&apos;
+    def ANSI_RED = &apos;\u001B[31m&apos;
+
+    switch (color) {
+        case &apos;WARNING&apos;:
+            echo &quot;${ANSI_YELLOW}${message}${ANSI_RESET}&quot;
+            break
+        case &apos;ERROR&apos;:
+            echo &quot;${ANSI_RED}${message}${ANSI_RESET}&quot;
+            break
+        default:
+            echo &quot;${ANSI_RESET}${message}${ANSI_RESET}&quot;
+            break
+    }
+}
+
+pipeline {
+    options {
+        ansiColor(&apos;xterm&apos;)
+    }
+    agent {
+        node {
+            label &apos;python&apos;
+        }
+    }
+    environment {
+        BB_WORKSPACE = &quot;ci-integration1&quot;
+        BB_REPO = &quot;test-for-ci&quot;
+        GIT_REPO = &quot;git@bitbucket.org:ci-integration1/test-for-ci.git&quot;
+        BEARER_AUTH = credentials(&apos;BITBUCKET_BEARER_AUTH&apos;)
+        FORCE_MERGE_APPROVED = false
+        TESTS_OK = false
+    }
+
+    stages {
+        stage(&apos;Get information about the pull request&apos;) {
+            steps {
+                script {
+                    PR_INFO = sh(returnStdout: true, script: &quot;&quot;&quot;curl \
+                        -X GET -L \
+                        -H \&quot;Accept: application/json\&quot; \
+                        -H \&quot;Authorization: Bearer ${env.BEARER_AUTH}\&quot; \
+                        https://api.bitbucket.org/2.0/repositories/${env.BB_WORKSPACE}/${env.BB_REPO}/pullrequests/${params.PR_ID}&quot;&quot;&quot;).trim()
+                }
+            }
+        }
+        stage(&apos;Verify that the pull request is open&apos;) {
+            steps {
+                script {
+                    if (PR_INFO.contains(&apos;&quot;state&quot;: &quot;OPEN&quot;&apos;)) {
+                        printMessage(&quot;&quot;, &quot;The pull request is open and can be merged...&quot;)
+                    }
+                    else {
+                            printMessage(&apos;ERROR&apos;, &quot;ERROR: The pull request with ID ${params.PR_ID} is closed, does not exist, or you don&apos;t have access to it!&quot;)
+                            error(&quot;There is an issue with the current pull request...&quot;)
+                        }
+                }
+            }
+        }
+        stage(&apos;Verify the option for a FORCE merge&apos;) {
+            steps {
+                script {
+                    if (params.FORCE_MERGE == true) {
+                        def BUILD_TRIGGER_BY = currentBuild.getBuildCauses()[0].userId
+                        def WHO_CAN_MERGE_WITHOUT_TESTS = getAdminUsers()
+                        if (BUILD_TRIGGER_BY in WHO_CAN_MERGE_WITHOUT_TESTS) {
+                            FORCE_MERGE_APPROVED = true
+                            printMessage (&quot;&quot;, &quot;Force merge activated, triggered by user ${BUILD_TRIGGER_BY}.&quot;)
+                            printMessage(&apos;WARNING&apos;, &quot;WARNING: Force merge!&quot;)
+                        }
+                        else {
+                            printMessage(&apos;ERROR&apos;, &quot;ERROR: User ${BUILD_TRIGGER_BY} does not have force merge permissions!!!&quot;)
+                            error(&quot;Starting a force merge for this user is not allowed.&quot;)
+                        }
+                    }
+                }
+            }
+        }
+        stage(&apos;Check out the repository&apos;) {
+            steps {
+                script {
+                    // Use the &apos;withCredentials&apos; step to bind SSH credentials
+                    withCredentials([sshUserPrivateKey(credentialsId: &apos;BB_SSH_KEY&apos;, keyFileVariable: &apos;SSH_PRIVATE_KEY&apos;)]) {
+                        // Set up Git configuration with the SSH key
+                        sh &quot;&quot;&quot;
+                            rm -rf ~/workspace/Merge_BB_PR/test-for-ci
+                            rm -rf ~/.ssh
+                            mkdir -p ~/.ssh
+                            cp $SSH_PRIVATE_KEY ~/.ssh/id_rsa
+                            chmod 600 ~/.ssh/id_rsa
+                            echo &apos;Host *\n\tStrictHostKeyChecking no\n\n&apos; &gt;&gt; ~/.ssh/config
+                        &quot;&quot;&quot;
+
+                        // Checkout the Git repository
+                        def prInfo = readJSON text: PR_INFO
+                        def sourceBranch = prInfo.source.branch.name
+                        sh &quot;git clone -b ${sourceBranch} ${GIT_REPO}&quot;
+                    }
+                }
+            }
+        }
+
+        stage(&apos;Run tests&apos;) {
+            steps {
+                script {
+                    def TESTS_RES = sh(script: &apos;python3 ~/workspace/Merge_BB_PR/test-for-ci/tests.py&apos;, returnStdout: true).trim()
+                    echo &quot;${TESTS_RES}&quot;
+                    if (TESTS_RES != &quot;Tests passed!&quot;) {
+                        printMessage(&apos;ERROR&apos;, &quot;Tests failed!&quot;)
+                        error(&quot;Tests failed!&quot;)
+                    }
+                    else {
+                        TESTS_OK = true
+                    }
+                }
+            }
+        }
+        stage(&quot;Tests have been approved&quot;) {
+            when {
+                expression {
+                    return FORCE_MERGE_APPROVED != true
+                }
+            }
+            steps {
+                script {
+                    def NOT_APPROVED_USERS = []
+                    def prInfo = readJSON text: PR_INFO
+                    def APPROVERS = prInfo.reviewers.display_name
+                    def PARTISIPANTS = prInfo.participants
+                    if (APPROVERS == []) {
+                        printMessage(&apos;ERROR&apos;, &quot;ERROR: It seems like this pull request doesn&apos;t have any approver...&quot;)
+                        error(&quot;It seems like this pull request doesn&apos;t have any approver...&quot;)
+                    }
+                    else {
+                        printMessage(&apos;&apos;, &quot;Found reviewer(s) for this pull request: ${APPROVERS}&quot;)
+                    }
+                    PARTISIPANTS.each { participant -&gt;
+                        if (participant.role == &apos;REVIEWER&apos; &amp;&amp; participant.approved == false) {
+                           NOT_APPROVED_USERS &lt;&lt;  participant.user.display_name
+                        }
+                    }
+                    if (NOT_APPROVED_USERS.size() != 0) {
+                        printMessage(&apos;ERROR&apos;, &quot;ERROR: The approver(s) haven&apos;t approved the pull request yet: ${NOT_APPROVED_USERS}&quot;)
+                        error(&quot;Doesn&apos;t have approval from all approvers.&quot;)
+                    }
+                }
+            }
+        }
+        stage(&apos;Run merge&apos;) {
+            when {
+                anyOf {
+                    expression {
+                        return FORCE_MERGE_APPROVED == true
+                    }
+                    expression {
+                        return TESTS_OK == true
+                    }
+                }
+            }
+            // https://developer.atlassian.com/cloud/bitbucket/rest/api-group-pullrequests/#api-repositories-workspace-repo-slug-pullrequests-pull-request-id-merge-post
+            // TODO: add data (merge_strategy, close_source_branch, etc)
+            steps {
+                script {
+                    sh(script: &quot;&quot;&quot;curl \
+                        -X POST \
+                        -H \&quot;Accept: application/json\&quot; \
+                        -H \&quot;Authorization: Bearer ${env.BEARER_AUTH}\&quot; \
+                        https://api.bitbucket.org/2.0/repositories/${env.BB_WORKSPACE}/${env.BB_REPO}/pullrequests/${params.PR_ID}/merge&quot;&quot;&quot;)
+                }
+            }
+        }
+    }
+}</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>
