@@ -28,6 +28,22 @@
           <description>Merge without any tests.</description>
           <defaultValue>false</defaultValue>
         </hudson.model.BooleanParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>CLOSE_SOURCE_BRANCH</name>
+          <description>Close source branch in Bitbucket</description>
+          <defaultValue>true</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>MERGE_STRATEGY</name>
+          <description>Bitbucket merge strategy</description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>merge_commit</string>
+              <string>squash</string>
+              <string>fast_forward</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
       </parameterDefinitions>
     </hudson.model.ParametersDefinitionProperty>
   </properties>
@@ -197,15 +213,21 @@ pipeline {
                     }
                 }
             }
-            // https://developer.atlassian.com/cloud/bitbucket/rest/api-group-pullrequests/#api-repositories-workspace-repo-slug-pullrequests-pull-request-id-merge-post
-            // TODO: add data (merge_strategy, close_source_branch, etc)
             steps {
                 script {
+                    def BUILD_TRIGGER_BY = currentBuild.getBuildCauses()[0].userId
                     sh(script: &quot;&quot;&quot;curl \
-                        -X POST \
-                        -H \&quot;Accept: application/json\&quot; \
-                        -H \&quot;Authorization: Bearer ${env.BEARER_AUTH}\&quot; \
-                        https://api.bitbucket.org/2.0/repositories/${env.BB_WORKSPACE}/${env.BB_REPO}/pullrequests/${params.PR_ID}/merge&quot;&quot;&quot;)
+                        --request POST \
+                        --url &apos;https://api.bitbucket.org/2.0/repositories/${env.BB_WORKSPACE}/${env.BB_REPO}/pullrequests/${params.PR_ID}/merge&apos; \
+                        --header &apos;Authorization: Bearer ${env.BEARER_AUTH}&apos; \
+                        --header &apos;Accept: application/json&apos; \
+                        --header &apos;Content-Type: application/json&apos; \
+                        --data &apos;{
+                            &quot;type&quot;: &quot;string&quot;,
+                            &quot;message&quot;: &quot;PR was merged via Jenkins pipeline by user ${BUILD_TRIGGER_BY}&quot;,
+                            &quot;close_source_branch&quot;: ${params.CLOSE_SOURCE_BRANCH},
+                            &quot;merge_strategy&quot;: &quot;${params.MERGE_STRATEGY}&quot;
+                        }&apos;&quot;&quot;&quot;)
                 }
             }
         }

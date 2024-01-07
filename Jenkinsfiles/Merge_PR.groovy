@@ -1,3 +1,6 @@
+// Bitbucket REST API info
+// https://developer.atlassian.com/cloud/bitbucket/rest/api-group-pullrequests/#api-repositories-workspace-repo-slug-pullrequests-pull-request-id-merge-post
+
 def getAdminUsers(){
   return ['admin']
 }
@@ -163,15 +166,21 @@ pipeline {
                     }
                 }
             }
-            // https://developer.atlassian.com/cloud/bitbucket/rest/api-group-pullrequests/#api-repositories-workspace-repo-slug-pullrequests-pull-request-id-merge-post
-            // TODO: add data (merge_strategy, close_source_branch, etc)
             steps {
                 script {
+                    def BUILD_TRIGGER_BY = currentBuild.getBuildCauses()[0].userId
                     sh(script: """curl \
-                        -X POST \
-                        -H \"Accept: application/json\" \
-                        -H \"Authorization: Bearer ${env.BEARER_AUTH}\" \
-                        https://api.bitbucket.org/2.0/repositories/${env.BB_WORKSPACE}/${env.BB_REPO}/pullrequests/${params.PR_ID}/merge""")
+                        --request POST \
+                        --url 'https://api.bitbucket.org/2.0/repositories/${env.BB_WORKSPACE}/${env.BB_REPO}/pullrequests/${params.PR_ID}/merge' \
+                        --header 'Authorization: Bearer ${env.BEARER_AUTH}' \
+                        --header 'Accept: application/json' \
+                        --header 'Content-Type: application/json' \
+                        --data '{
+                            "type": "string",
+                            "message": "PR was merged via Jenkins pipeline by user ${BUILD_TRIGGER_BY}",
+                            "close_source_branch": ${params.CLOSE_SOURCE_BRANCH},
+                            "merge_strategy": "${params.MERGE_STRATEGY}"
+                        }'""")
                 }
             }
         }
