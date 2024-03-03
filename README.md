@@ -45,7 +45,3 @@ python3 ./data.py -i <AWS_ID> -k <AWS_KEY> -r <AWS_REGION> -b <AWS _S3_BUCKET> -
 python3 ./data.py -i <AWS_ID> -k <AWS_KEY> -r <AWS_REGION> -b <AWS _S3_BUCKET> -f data -m LOCAL_TO_S3
 ```
 
-### TODO:
-- get functions from data.py for downloading/uploading files in invoke file
-- add Dockerfiles for setup different types of workers (Terraform - done)
-
