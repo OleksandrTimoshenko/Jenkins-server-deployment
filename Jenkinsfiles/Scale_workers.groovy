@@ -1,15 +1,19 @@
+@Library('Default_jenkins_lib@master') import main.Utilities
+lib = new Utilities(this)
+
 pipeline {
     agent {
         node {
             label 'master'
         }
     }
-  
-  stages {
-    stage('Execute Bash Command') {
-      steps {
-        sh "docker service scale ${WORKER_NAME}=${SCALE_TO}"
-      }
+    stages {
+        stage('Scale Docker Service') {
+            steps {
+                script {
+                    lib.scaleJenkinsWorkers(params.CONTAINER_NAME, params.WORKERS_NUMBER)
+                }
+            }
+        }
     }
-  }
 }
